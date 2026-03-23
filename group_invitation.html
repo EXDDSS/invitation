@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Responses</title>
+</head>
+
+<body>
+
+<h2>📊 응답 결과</h2>
+
+<table border="1" id="table"></table>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD9tGXzd2hYTLtoqMTkvhEwTCsLzLSZFug",
+  authDomain: "exddss-invitation.firebaseapp.com",
+  projectId: "exddss-invitation",
+  storageBucket: "exddss-invitation.firebasestorage.app",
+  messagingSenderId: "246756776070",
+  appId: "1:246756776070:web:ce3c16791d303bb5bdd907"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const snapshot = await getDocs(collection(db, "responses"));
+
+let table = document.getElementById("table");
+
+let headers = new Set();
+let rows = [];
+
+snapshot.forEach(doc => {
+  const data = doc.data();
+  rows.push(data);
+  Object.keys(data).forEach(k => headers.add(k));
+});
+
+headers = Array.from(headers);
+
+// 헤더 생성
+let headerRow = "<tr>";
+headers.forEach(h => headerRow += `<th>${h}</th>`);
+headerRow += "</tr>";
+table.innerHTML += headerRow;
+
+// 데이터
+rows.forEach(r => {
+  let row = "<tr>";
+  headers.forEach(h => row += `<td>${r[h] || ""}</td>`);
+  row += "</tr>";
+  table.innerHTML += row;
+});
+</script>
+
+</body>
+</html>
