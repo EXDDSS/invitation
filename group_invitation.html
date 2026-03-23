@@ -28,13 +28,17 @@ body {
   font-family: 'Great Vibes', cursive;
   font-size: 48px;
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 40px;
 }
 
-/* 버튼 */
-.actions {
-  text-align: right;
-  margin-bottom: 20px;
+/* 우측 상단 버튼 */
+.top-actions {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  gap: 10px;
+  z-index: 1000;
 }
 
 button {
@@ -68,7 +72,7 @@ th {
   font-weight: 600;
 }
 
-/* memo input */
+/* memo */
 .memo-input {
   width: 100%;
   background: transparent;
@@ -83,16 +87,15 @@ th {
 
 <body>
 
-<div class="container">
-
-<div class="title">Attendees List</div>
-
-<div class="actions">
+<!-- 🔥 우측 상단 버튼 -->
+<div class="top-actions">
+  <button onclick="backupTxt()">백업</button>
   <button onclick="deleteSelected()">선택 삭제</button>
 </div>
 
-<table id="table"></table>
-
+<div class="container">
+  <div class="title">Attendees List</div>
+  <table id="table"></table>
 </div>
 
 <script type="module">
@@ -124,29 +127,33 @@ snapshot.forEach(d => {
   });
 });
 
+// 헤더 구성
 const baseHeaders = ["선택","이름","나이","신장","체중","국적"];
 const headers = [...baseHeaders, ...extraFields, "Invitation_Code", "Memo"];
 
 const table = document.getElementById("table");
 
-// 헤더
+// 헤더 렌더링
 let headerRow = "<tr>";
 headers.forEach(h => headerRow += `<th>${h}</th>`);
 headerRow += "</tr>";
 table.innerHTML += headerRow;
 
-// 데이터
+// 데이터 렌더링
 rows.forEach(r => {
   let row = "<tr>";
 
   headers.forEach(h => {
     if (h === "선택") {
       row += `<td><input type="checkbox" data-id="${r.id}"></td>`;
-    } else if (h === "Invitation_Code") {
+    } 
+    else if (h === "Invitation_Code") {
       row += `<td>${r.invitationId || ""}</td>`;
-    } else if (h === "Memo") {
+    } 
+    else if (h === "Memo") {
       row += `<td ondblclick="editMemo(this, '${r.id}')">${r.memo || ""}</td>`;
-    } else {
+    } 
+    else {
       row += `<td>${r[h] || ""}</td>`;
     }
   });
@@ -155,9 +162,16 @@ rows.forEach(r => {
   table.innerHTML += row;
 });
 
-// 삭제
+// ✅ 삭제
 window.deleteSelected = async function() {
   const checked = document.querySelectorAll("input[type='checkbox']:checked");
+
+  if (checked.length === 0) {
+    alert("선택된 항목이 없습니다");
+    return;
+  }
+
+  if (!confirm("정말 삭제하시겠습니까?")) return;
 
   for (let c of checked) {
     await deleteDoc(doc(db, "responses", c.dataset.id));
@@ -167,7 +181,7 @@ window.deleteSelected = async function() {
   location.reload();
 };
 
-// memo 수정
+// ✅ memo 수정
 window.editMemo = function(cell, id) {
   const current = cell.innerText;
 
@@ -184,6 +198,40 @@ window.editMemo = function(cell, id) {
 
     cell.innerText = value;
   });
+};
+
+// ✅ TXT 백업
+window.backupTxt = function() {
+
+  let text = headers.join("\t") + "\n";
+
+  rows.forEach(r => {
+    let line = [];
+
+    headers.forEach(h => {
+      if (h === "선택") return;
+
+      if (h === "Invitation_Code") {
+        line.push(r.invitationId || "");
+      } else if (h === "Memo") {
+        line.push(r.memo || "");
+      } else {
+        line.push(r[h] || "");
+      }
+    });
+
+    text += line.join("\t") + "\n";
+  });
+
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "attendees_backup.txt";
+  a.click();
+
+  URL.revokeObjectURL(url);
 };
 </script>
 
