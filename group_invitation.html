@@ -18,40 +18,65 @@ body {
 }
 
 .container {
-  width: 900px;
+  width: 1000px;
   background: rgba(255,255,255,0.05);
   padding: 50px;
   border-radius: 10px;
 }
 
-/* 제목 */
 .title {
   font-family: 'Great Vibes', cursive;
   font-size: 48px;
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
+}
+
+/* 버튼 */
+.actions {
+  text-align: right;
+  margin-bottom: 20px;
+}
+
+button {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.5);
+  color: white;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: rgba(255,255,255,0.1);
 }
 
 /* 테이블 */
 table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: auto;
+  word-break: break-word;
 }
 
 th, td {
   border-bottom: 1px solid rgba(255,255,255,0.2);
-  padding: 12px 10px;
-  text-align: left;
+  padding: 10px;
+  text-align: center;
   font-size: 14px;
 }
 
 th {
   font-weight: 600;
-  opacity: 0.8;
 }
 
-tr:hover {
-  background: rgba(255,255,255,0.05);
+/* memo input */
+.memo-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: white;
+  text-align: center;
+  font-family: inherit;
+  font-size: 14px;
 }
 </style>
 </head>
@@ -62,13 +87,17 @@ tr:hover {
 
 <div class="title">Attendees List</div>
 
+<div class="actions">
+  <button onclick="deleteSelected()">선택 삭제</button>
+</div>
+
 <table id="table"></table>
 
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD9tGXzd2hYTLtoqMTkvhEwTCsLzLSZFug",
@@ -84,37 +113,39 @@ const snapshot = await getDocs(collection(db, "responses"));
 let rows = [];
 let extraFields = new Set();
 
-snapshot.forEach(doc => {
-  const data = doc.data();
-  rows.push(data);
+snapshot.forEach(d => {
+  const data = d.data();
+  rows.push({ id: d.id, ...data });
 
   Object.keys(data).forEach(k => {
-    if (!["이름","나이","신장","체중","국적","invitationId"].includes(k)) {
+    if (!["이름","나이","신장","체중","국적","invitationId","memo"].includes(k)) {
       extraFields.add(k);
     }
   });
 });
 
-// 헤더 순서 고정
-const baseHeaders = ["이름","나이","신장","체중","국적"];
-const headers = [...baseHeaders, ...extraFields, "Invitation_Code"];
+const baseHeaders = ["선택","이름","나이","신장","체중","국적"];
+const headers = [...baseHeaders, ...extraFields, "Invitation_Code", "Memo"];
 
 const table = document.getElementById("table");
 
-// 헤더 생성
+// 헤더
 let headerRow = "<tr>";
 headers.forEach(h => headerRow += `<th>${h}</th>`);
 headerRow += "</tr>";
-
 table.innerHTML += headerRow;
 
-// 데이터 생성
+// 데이터
 rows.forEach(r => {
   let row = "<tr>";
 
   headers.forEach(h => {
-    if (h === "Invitation_Code") {
+    if (h === "선택") {
+      row += `<td><input type="checkbox" data-id="${r.id}"></td>`;
+    } else if (h === "Invitation_Code") {
       row += `<td>${r.invitationId || ""}</td>`;
+    } else if (h === "Memo") {
+      row += `<td ondblclick="editMemo(this, '${r.id}')">${r.memo || ""}</td>`;
     } else {
       row += `<td>${r[h] || ""}</td>`;
     }
@@ -123,6 +154,37 @@ rows.forEach(r => {
   row += "</tr>";
   table.innerHTML += row;
 });
+
+// 삭제
+window.deleteSelected = async function() {
+  const checked = document.querySelectorAll("input[type='checkbox']:checked");
+
+  for (let c of checked) {
+    await deleteDoc(doc(db, "responses", c.dataset.id));
+  }
+
+  alert("삭제 완료");
+  location.reload();
+};
+
+// memo 수정
+window.editMemo = function(cell, id) {
+  const current = cell.innerText;
+
+  cell.innerHTML = `<input class="memo-input" value="${current}">`;
+  const input = cell.querySelector("input");
+  input.focus();
+
+  input.addEventListener("blur", async () => {
+    const value = input.value;
+
+    await updateDoc(doc(db, "responses", id), {
+      memo: value
+    });
+
+    cell.innerText = value;
+  });
+};
 </script>
 
 </body>
