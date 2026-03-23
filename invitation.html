@@ -32,7 +32,6 @@ body {
   margin-bottom: 40px;
 }
 
-/* 텍스트 */
 textarea {
   width: 100%;
   background: transparent;
@@ -40,10 +39,8 @@ textarea {
   border-bottom: 1px solid rgba(255,255,255,0.3);
   color: white;
   padding: 10px 0;
-  resize: none;
 }
 
-/* 2열 */
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -60,7 +57,6 @@ textarea {
   width: 80px;
 }
 
-/* 밑줄 통합 */
 .input-wrap {
   flex: 1;
   display: flex;
@@ -77,10 +73,8 @@ textarea {
 
 .unit {
   margin-left: 6px;
-  opacity: 0.7;
 }
 
-/* 버튼 */
 .buttons {
   text-align: center;
   margin-top: 30px;
@@ -95,23 +89,12 @@ button {
   cursor: pointer;
 }
 
-button:hover {
-  background: rgba(255,255,255,0.1);
-}
-
-.link-box {
-  margin-top: 20px;
-  font-size: 13px;
-}
-
-/* 이미지 업로드 */
 .upload-box {
   position: absolute;
   top: 20px;
   right: 20px;
 }
 
-/* 이미지 에디터 */
 #imageEditor {
   position: absolute;
   display: none;
@@ -140,64 +123,38 @@ button:hover {
 
 <div class="title">Invitation</div>
 
-<!-- 업로드 -->
 <div class="upload-box">
   <input type="file" id="imageInput">
 </div>
 
-<!-- 이미지 -->
 <div id="imageEditor">
   <img id="preview">
   <div class="resize"></div>
 </div>
 
-<textarea id="intro" rows="3"></textarea>
+<textarea id="intro"></textarea>
 
 <div class="grid" id="fields">
 
-  <div class="field">
-    <div class="label">이름 :</div>
-    <div class="input-wrap"><input></div>
-  </div>
-
-  <div class="field">
-    <div class="label">나이 :</div>
-    <div class="input-wrap"><input type="number"></div>
-  </div>
-
-  <div class="field">
-    <div class="label">신장 :</div>
-    <div class="input-wrap">
-      <input type="number">
-      <span class="unit">cm</span>
-    </div>
-  </div>
-
-  <div class="field">
-    <div class="label">체중 :</div>
-    <div class="input-wrap">
-      <input type="number">
-      <span class="unit">kg</span>
-    </div>
-  </div>
-
-  <div class="field">
-    <div class="label">국적 :</div>
-    <div class="input-wrap"><input></div>
-  </div>
+  <div class="field"><div class="label">이름 :</div><div class="input-wrap"><input></div></div>
+  <div class="field"><div class="label">나이 :</div><div class="input-wrap"><input type="number"></div></div>
+  <div class="field"><div class="label">신장 :</div><div class="input-wrap"><input type="number"><span class="unit">cm</span></div></div>
+  <div class="field"><div class="label">체중 :</div><div class="input-wrap"><input type="number"><span class="unit">kg</span></div></div>
+  <div class="field"><div class="label">국적 :</div><div class="input-wrap"><input></div></div>
 
 </div>
 
 <button onclick="addField()">+ 항목 추가</button>
 
-<textarea id="outro" rows="3"></textarea>
+<textarea id="outro"></textarea>
 
 <div class="buttons">
-  <button onclick="generateLink()">저장 & 링크 생성</button>
+  <button onclick="saveInvitation()">저장</button>
+  <button onclick="createLink()">링크 생성</button>
   <button onclick="copyLink()">복사</button>
 </div>
 
-<div id="linkBox" class="link-box"></div>
+<div id="linkBox"></div>
 
 </div>
 
@@ -214,89 +171,45 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// 이미지 상태
-let imageData = "";
-let pos = { x: 150, y: 150 };
-let size = 200;
-
-const editor = document.getElementById("imageEditor");
-const img = document.getElementById("preview");
-
-// 업로드
-imageInput.addEventListener("change", e => {
-  const reader = new FileReader();
-  reader.onload = () => {
-    imageData = reader.result;
-    img.src = imageData;
-    editor.style.display = "block";
-    editor.style.left = pos.x + "px";
-    editor.style.top = pos.y + "px";
-  };
-  reader.readAsDataURL(e.target.files[0]);
-});
-
-// 드래그
-let drag = false;
-
-editor.addEventListener("mousedown", () => drag = true);
-
-document.addEventListener("mousemove", e => {
-  if (!drag) return;
-  pos.x = e.clientX - size/2;
-  pos.y = e.clientY - size/2;
-  editor.style.left = pos.x + "px";
-  editor.style.top = pos.y + "px";
-});
-
-document.addEventListener("mouseup", () => drag = false);
-
-// 리사이즈
-let resize = false;
-
-document.querySelector(".resize").addEventListener("mousedown", e => {
-  e.stopPropagation();
-  resize = true;
-});
-
-document.addEventListener("mousemove", e => {
-  if (!resize) return;
-  size = e.clientX - pos.x;
-  img.style.width = size + "px";
-});
-
-document.addEventListener("mouseup", () => resize = false);
-
-// 항목 추가
-window.addField = function() {
-  const div = document.createElement("div");
-  div.className = "field";
-  div.innerHTML = `
-    <div class="label">항목 :</div>
-    <div class="input-wrap"><input></div>
-  `;
-  document.getElementById("fields").appendChild(div);
-};
+let savedId = null;
 
 // 저장
-window.generateLink = async function() {
+window.saveInvitation = async function() {
   const intro = document.getElementById("intro").value;
   const outro = document.getElementById("outro").value;
+
+  const fields = [];
+  document.querySelectorAll(".field").forEach(f => {
+    const label = f.querySelector(".label").innerText.replace(":", "").trim();
+    fields.push(label);
+  });
 
   const docRef = await addDoc(collection(db, "invitations"), {
     intro,
     outro,
-    image: imageData,
-    pos,
-    size
+    fields
   });
 
-  const link = `${location.origin}/fill.html?id=${docRef.id}`;
-  linkBox.innerText = link;
+  savedId = docRef.id;
+  alert("저장 완료");
+};
+
+// 링크 생성
+window.createLink = function() {
+  if (!savedId) return alert("먼저 저장하세요");
+
+  const basePath = location.pathname.substring(0, location.pathname.lastIndexOf("/") + 1);
+  const link = `${location.origin}${basePath}fill.html?id=${savedId}`;
+
+  document.getElementById("linkBox").innerText = link;
 };
 
 // 복사
 window.copyLink = function() {
-  navigator.clipboard.writeText(linkBox.innerText);
+  const text = document.getElementById("linkBox").innerText;
+  if (!text) return alert("먼저 링크 생성");
+
+  navigator.clipboard.writeText(text);
   alert("복사 완료");
 };
 </script>
