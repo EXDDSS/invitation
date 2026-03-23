@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Invitation</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR&display=swap');
+
+body {
+  background: #f4f1ea;
+  font-family: 'Noto Serif KR', serif;
+  display: flex;
+  justify-content: center;
+  padding: 50px 20px;
+}
+
+/* 편지 카드 */
+.letter {
+  background: #fffdf8;
+  width: 600px;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+  line-height: 1.8;
+  position: relative;
+}
+
+/* 위쪽 라인 */
+.letter::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 6px;
+  width: 100%;
+  background: linear-gradient(90deg, #d4af37, #f7e7a9);
+  border-radius: 12px 12px 0 0;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+/* 텍스트 영역 */
+textarea {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #ccc;
+  resize: none;
+  padding: 10px 0;
+  font-size: 15px;
+  background: transparent;
+}
+
+/* 항목 스타일 */
+.field-row {
+  display: flex;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.label {
+  width: 120px;
+  font-weight: bold;
+}
+
+.input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+input {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #aaa;
+  padding: 5px;
+  font-size: 14px;
+  background: transparent;
+}
+
+.unit {
+  margin-left: 5px;
+  color: #888;
+}
+
+/* 버튼 */
+.buttons {
+  margin-top: 30px;
+  text-align: center;
+}
+
+button {
+  background: #d4af37;
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  margin: 5px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #b8962e;
+}
+
+/* 링크 */
+.link-box {
+  margin-top: 20px;
+  padding: 10px;
+  background: #f0f0f0;
+  font-size: 13px;
+  word-break: break-all;
+}
+</style>
+</head>
+
+<body>
+
+<div class="letter">
+
+<h1>💌 Invitation</h1>
+
+<!-- 인사말 -->
+<textarea id="intro" rows="3" placeholder="인사말을 입력해주세요"></textarea>
+
+<!-- 항목 -->
+<div id="fields">
+
+  <div class="field-row">
+    <div class="label">이름 :</div>
+    <div class="input-wrap">
+      <input value="이름">
+    </div>
+  </div>
+
+  <div class="field-row">
+    <div class="label">나이 :</div>
+    <div class="input-wrap">
+      <input type="number" value="나이">
+    </div>
+  </div>
+
+  <div class="field-row">
+    <div class="label">국적 :</div>
+    <div class="input-wrap">
+      <input value="국적">
+    </div>
+  </div>
+
+  <div class="field-row">
+    <div class="label">키 :</div>
+    <div class="input-wrap">
+      <input type="number" placeholder="숫자 입력">
+      <span class="unit">cm</span>
+    </div>
+  </div>
+
+  <div class="field-row">
+    <div class="label">몸무게 :</div>
+    <div class="input-wrap">
+      <input type="number" placeholder="숫자 입력">
+      <span class="unit">kg</span>
+    </div>
+  </div>
+
+</div>
+
+<button onclick="addField()">+ 항목 추가</button>
+
+<!-- 마무리 -->
+<textarea id="outro" rows="3" placeholder="마무리 메시지를 입력해주세요"></textarea>
+
+<div class="buttons">
+  <button onclick="generateLink()">저장 & 링크 생성</button>
+  <button onclick="copyLink()">링크 복사</button>
+</div>
+
+<div id="linkBox" class="link-box"></div>
+
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyD9tGXzd2hYTLtoqMTkvhEwTCsLzLSZFug",
+  authDomain: "exddss-invitation.firebaseapp.com",
+  projectId: "exddss-invitation",
+  storageBucket: "exddss-invitation.firebasestorage.app",
+  messagingSenderId: "246756776070",
+  appId: "1:246756776070:web:ce3c16791d303bb5bdd907"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// 항목 추가
+window.addField = function() {
+  const div = document.createElement("div");
+  div.className = "field-row";
+  div.innerHTML = `
+    <div class="label">항목 :</div>
+    <div class="input-wrap">
+      <input placeholder="항목명">
+    </div>
+  `;
+  document.getElementById("fields").appendChild(div);
+};
+
+// 링크 생성
+window.generateLink = async function() {
+  const intro = document.getElementById("intro").value;
+  const outro = document.getElementById("outro").value;
+
+  const inputs = document.querySelectorAll("#fields input");
+  const fields = Array.from(inputs).map(i => i.value);
+
+  const docRef = await addDoc(collection(db, "invitations"), {
+    intro,
+    outro,
+    fields
+  });
+
+  const link = `${location.origin}/fill.html?id=${docRef.id}`;
+  document.getElementById("linkBox").innerText = link;
+};
+
+// 복사
+window.copyLink = function() {
+  const text = document.getElementById("linkBox").innerText;
+  navigator.clipboard.writeText(text);
+  alert("링크 복사 완료!");
+};
+</script>
+
+</body>
+</html>
