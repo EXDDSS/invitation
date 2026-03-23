@@ -83,7 +83,6 @@ textarea {
   opacity: 0.7;
 }
 
-/* 삭제 버튼 */
 .delete-btn {
   margin-left: 10px;
   cursor: pointer;
@@ -128,40 +127,7 @@ button:hover {
 
 <textarea id="intro" rows="1" placeholder=" "></textarea>
 
-<div class="grid" id="fields">
-
-  <div class="field">
-    <div class="label">이름 :</div>
-    <div class="input-wrap"><input></div>
-  </div>
-
-  <div class="field">
-    <div class="label">나이 :</div>
-    <div class="input-wrap"><input type="number"></div>
-  </div>
-
-  <div class="field">
-    <div class="label">신장 :</div>
-    <div class="input-wrap"><input type="number"><span class="unit">cm</span></div>
-  </div>
-
-  <div class="field">
-    <div class="label">체중 :</div>
-    <div class="input-wrap"><input type="number"><span class="unit">kg</span></div>
-  </div>
-
-  <div class="field">
-    <div class="label">국적 :</div>
-    <div class="input-wrap"><input></div>
-  </div>
-
-  <!-- 🔥 PL 항목 추가 (국적 오른쪽) -->
-  <div class="field">
-    <div class="label">PL :</div>
-    <div class="input-wrap"><input type="number"><span class="unit">cm</span></div>
-  </div>
-
-</div>
+<div class="grid" id="fields"></div>
 
 <button onclick="addField()">+ 항목 추가</button>
 
@@ -202,46 +168,117 @@ document.querySelectorAll("textarea").forEach(t => {
   t.addEventListener("input", () => autoResize(t));
 });
 
-// 🔥 항목 삭제 함수
-function deleteField(el) {
-  el.parentElement.remove();
+// 🔥 기본 필드 생성 함수
+function createField({label, type="text", value="", unit=null}) {
+  const div = document.createElement("div");
+  div.className = "field";
+
+  div.innerHTML = `
+    <div class="label">${label} :</div>
+    <div class="input-wrap">
+      <input type="${type}" value="${value}">
+      ${unit ? `<span class="unit">${unit}</span>` : ""}
+      <span class="delete-btn" onclick="deleteField(this)">✕</span>
+    </div>
+  `;
+  return div;
 }
 
-// 🔥 항목 추가 (팝업 입력)
+// 🔥 기본 구조 세팅
+function setDefaultFields() {
+  const container = document.getElementById("fields");
+  container.innerHTML = "";
+
+  container.appendChild(createField({label:"이름"}));
+  container.appendChild(createField({label:"나이", type:"number"}));
+  container.appendChild(createField({label:"신장", type:"number", unit:"cm"}));
+  container.appendChild(createField({label:"체중", type:"number", unit:"kg"}));
+  container.appendChild(createField({label:"국적"}));
+  container.appendChild(createField({label:"PL", type:"number", unit:"cm"}));
+}
+
+// 🔥 로드 시 복원
+window.addEventListener("DOMContentLoaded", () => {
+  const saved = localStorage.getItem("invitationData");
+
+  if (!saved) {
+    setDefaultFields();
+    return;
+  }
+
+  const data = JSON.parse(saved);
+
+  document.getElementById("intro").value = data.intro || "";
+  document.getElementById("outro").value = data.outro || "";
+
+  const container = document.getElementById("fields");
+  container.innerHTML = "";
+
+  data.fields.forEach(f => {
+    container.appendChild(createField(f));
+  });
+
+  document.querySelectorAll("textarea").forEach(t => autoResize(t));
+});
+
+// 🔥 삭제
+window.deleteField = function(el) {
+  el.closest(".field").remove();
+  autoSave();
+};
+
+// 🔥 항목 추가 (팝업)
 window.addField = function() {
   const name = prompt("항목명을 입력해주세요.");
   if (!name) return;
 
-  const div = document.createElement("div");
-  div.className = "field";
-  div.innerHTML = `
-    <div class="label">${name} :</div>
-    <div class="input-wrap">
-      <input>
-      <span class="delete-btn" onclick="deleteField(this)">✕</span>
-    </div>
-  `;
-  document.getElementById("fields").appendChild(div);
+  const container = document.getElementById("fields");
+  container.appendChild(createField({label:name}));
+
+  autoSave();
 };
 
-// 저장
-window.saveInvitation = async function() {
+// 🔥 자동 저장
+function autoSave() {
   const intro = document.getElementById("intro").value;
   const outro = document.getElementById("outro").value;
 
   const fields = [];
+
   document.querySelectorAll(".field").forEach(f => {
     const label = f.querySelector(".label").innerText.replace(":", "").trim();
-    fields.push(label);
+    const input = f.querySelector("input");
+    const unitEl = f.querySelector(".unit");
+
+    fields.push({
+      label,
+      value: input.value,
+      type: input.type,
+      unit: unitEl ? unitEl.innerText : null
+    });
   });
 
-  const docRef = await addDoc(collection(db, "invitations"), {
+  localStorage.setItem("invitationData", JSON.stringify({
     intro,
     outro,
     fields
+  }));
+}
+
+// 🔥 저장 버튼
+window.saveInvitation = async function() {
+  autoSave();
+
+  const data = JSON.parse(localStorage.getItem("invitationData"));
+
+  const docRef = await addDoc(collection(db, "invitations"), {
+    intro: data.intro,
+    outro: data.outro,
+    fields: data.fields.map(f => f.label)
   });
 
   savedId = docRef.id;
+
   alert("저장 완료");
 };
 
